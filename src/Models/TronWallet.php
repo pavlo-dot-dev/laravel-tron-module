@@ -1,0 +1,92 @@
+<?php
+
+namespace PavloDotDev\LaravelTronModule\Models;
+
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Date;
+use PavloDotDev\LaravelTronModule\Casts\DecimalCast;
+use PavloDotDev\LaravelTronModule\Facades\Tron;
+use PavloDotDev\LaravelTronModule\Wallet\Encrypted;
+
+class TronWallet extends Model
+{
+    protected $fillable = [
+        'name',
+        'title',
+        'password',
+        'mnemonic',
+        'seed',
+        'sync_at',
+        'balance',
+        'trc20',
+        'active'
+    ];
+
+    protected $hidden = [
+        'password',
+        'mnemonic',
+        'seed',
+        'trc20',
+    ];
+
+    protected $appends = [
+        'plain_password',
+        'plain_mnemonic',
+        'plain_seed',
+        'trc20_balances'
+    ];
+
+    protected $casts = [
+        'sync_at' => 'datetime',
+        'balance' => DecimalCast::class,
+        'trc20' => 'json',
+        'active' => 'boolean',
+    ];
+
+    protected ?Encrypted $encrypted = null;
+
+    public function encrypted(): Encrypted
+    {
+        if ($this->encrypted === null) {
+            $this->encrypted = new Encrypted($this);
+        }
+
+        return $this->encrypted;
+    }
+
+    public function addresses(): HasMany
+    {
+        /** @var class-string<TronAddress> $addressModel */
+        $addressModel = config('tron.models.address');
+
+        return $this->hasMany($addressModel, 'wallet_id', 'id');
+    }
+
+    public function plainPassword(): Attribute
+    {
+        return new Attribute(get: fn() => $this->encrypted()->password());
+    }
+
+    public function plainMnemonic(): Attribute
+    {
+        return new Attribute(get: fn() => $this->encrypted()->mnemonic());
+    }
+
+    public function plainSeed(): Attribute
+    {
+        return new Attribute(get: fn() => $this->encrypted()->seed());
+    }
+
+    public function trc20Balances(): Attribute
+    {
+        return new Attribute(
+            get: fn() => Tron::getTrc20()->map(fn(TronTrc20 $trc20) => [
+                ...$trc20->only(['address', 'name', 'symbol', 'decimals']),
+                'balance' => $this->trc20[$trc20->address] ?? null,
+            ])
+        );
+    }
+}

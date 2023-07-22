@@ -1,0 +1,40 @@
+{
+  "name": "pavlo-dot-dev/laravel-tron-module",
+  "description": "Laravel Tron Module",
+  "homepage": "https://github.com/pavlo-dot-dev/laravel-tron-module",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "PAVLO POPOV",
+      "email": "info@pavlo.dev"
+    }
+  ],
+  "require": {
+    "php": "^8.0",
+    "ext-gmp": "*",
+    "ext-decimal": "*",
+    "illuminate/contracts": "^10.0",
+    "spatie/laravel-package-tools": "^1.15",
+    "fenguoz/tron-php": "^2.0",
+    "furqansiddiqui/bip39-mnemonic-php": "^0.1.7",
+    "minter/minter-php-bip-44": "^1.2",
+    "iexbase/tron-api": "^5.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "PavloDotDev\\LaravelTronModule\\": "src"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "PavloDotDev\\LaravelTronModule\\TronServiceProvider"
+      ],
+      "aliases": {
+        "Tron": "PavloDotDev\\LaravelTronModule\\Facades\\Tron"
+      }
+    }
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true
+}
