@@ -3,13 +3,12 @@
 namespace PavloDotDev\LaravelTronModule\Api;
 
 use GuzzleHttp\Client;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use PavloDotDev\LaravelTronModule\Api\Enums\HttpMethod;
-use Psr\Http\Message\StreamInterface;
 
 class HttpProvider
 {
-    protected Client $client;
-
     public function __construct(
         public readonly string     $baseUri,
         protected readonly array   $headers = [],
@@ -19,11 +18,6 @@ class HttpProvider
         protected string           $statusPage = '/'
     )
     {
-        $this->client = new Client([
-            'base_uri' => $baseUri,
-            'timeout' => $timeout,
-            'auth' => $this->user && [$this->user, $this->password]
-        ]);
     }
 
     public function setStatusPage(string $page = '/'): void
@@ -50,26 +44,31 @@ class HttpProvider
 
     public function request(string $path, array $payload = [], HttpMethod $method = HttpMethod::GET): array
     {
-        $response = $this->client->request($method->name, $path, [
-            'headers' => [
-                'Accept' => 'application/json',
-                'Content-Type' => 'application/json',
-                ...$this->headers
-            ],
-            'json' => $payload,
-        ]);
+        $client = Http::asJson()
+            ->acceptJson()
+            ->withOptions([
+                'base_uri' => $this->baseUri,
+                'timeout' => $this->timeout,
+                'auth' => $this->user && [$this->user, $this->password]
+            ])
+            ->withHeaders($this->headers);
 
-        return $this->decodeBody(
-            $response->getBody(),
-            $response->getStatusCode()
-        );
+        $response = $method === HttpMethod::POST ? $client->post($path, $payload) : $client->get($path);
+        $statusCode = $response->status();
+        $body = $response->body();
+
+        if ((string)$response->getBody() === 'OK') {
+            $body = 'OK';
+        }
+
+        return $this->decode($body, $statusCode);
     }
 
-    protected function decodeBody(StreamInterface $stream, int $status): array
+    protected function decode(string $body, int $status): array
     {
-        $decodedBody = json_decode($stream->getContents(), true);
+        $decodedBody = json_decode($body, true);
 
-        if ((string)$stream == 'OK') {
+        if ($body == 'OK') {
             $decodedBody = [
                 'status' => 1
             ];
@@ -81,7 +80,7 @@ class HttpProvider
             throw new \Exception('Page not found');
         }
 
-        if( isset( $decodedBody['Error'] ) ) {
+        if (isset($decodedBody['Error'])) {
             throw new \Exception($decodedBody['Error']);
         }
 

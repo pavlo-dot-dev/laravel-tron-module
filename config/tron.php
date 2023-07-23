@@ -18,7 +18,7 @@ return [
      * Sets the handler to be used when Tron Wallet
      * receives a new transaction.
      */
-    'webhook_handler' => \PavloDotDev\LaravelTronModule\Handlers\EmptyWebhookHandler::class,
+    'webhook_handler' => \PavloDotDev\LaravelTronModule\Handlers\EmptyWebhookHandlerInterface::class,
 
     /*
      * Set model class for both TronWallet, TronAddress, TronTrc20,

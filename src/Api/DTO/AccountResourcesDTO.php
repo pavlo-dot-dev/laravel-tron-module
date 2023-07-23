@@ -9,12 +9,12 @@ class AccountResourcesDTO
         public readonly string $address,
         public readonly array  $data,
         public readonly bool   $activated,
-        public readonly int $bandwidthTotal,
-        public readonly int $bandwidthUsed,
-        public readonly int $bandwidthAvailable,
-        public readonly int $energyTotal,
-        public readonly int $energyUsed,
-        public readonly int $energyAvailable,
+        public readonly ?int $bandwidthTotal,
+        public readonly ?int $bandwidthUsed,
+        public readonly ?int $bandwidthAvailable,
+        public readonly ?int $energyTotal,
+        public readonly ?int $energyUsed,
+        public readonly ?int $energyAvailable,
     )
     {
     }

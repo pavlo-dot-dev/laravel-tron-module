@@ -2,11 +2,13 @@
 
 namespace PavloDotDev\LaravelTronModule\Services;
 
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Date;
 use PavloDotDev\LaravelTronModule\Api\DTO\TransferDTO;
 use PavloDotDev\LaravelTronModule\Api\DTO\TRC20TransferDTO;
 use PavloDotDev\LaravelTronModule\Enums\TronTransactionType;
 use PavloDotDev\LaravelTronModule\Facades\Tron;
+use PavloDotDev\LaravelTronModule\Handlers\WebhookHandlerInterface;
 use PavloDotDev\LaravelTronModule\Models\TronAddress;
 use PavloDotDev\LaravelTronModule\Models\TronTransaction;
 use PavloDotDev\LaravelTronModule\Models\TronTRC20;
@@ -88,7 +90,7 @@ class SyncAddressService
 
     protected function handleTransfer(TransferDTO $transfer): void
     {
-        TronTransaction::updateOrCreate([
+        $transaction = TronTransaction::updateOrCreate([
             'txid' => $transfer->txid,
             'address' => $this->address->address,
         ], [
@@ -99,11 +101,24 @@ class SyncAddressService
             'amount' => $transfer->value,
             'debug_data' => $transfer->toArray(),
         ]);
+
+        if ($transaction->wasRecentlyCreated) {
+            /** @var class-string<WebhookHandlerInterface> $webhookHandlerModel */
+            $webhookHandlerModel = config('tron.webhook_handler');
+            if ($webhookHandlerModel) {
+                /** @var WebhookHandlerInterface $webhookHandler */
+                $webhookHandler = App::make($webhookHandlerModel);
+                App::call([$webhookHandler, 'handle'], [
+                    'address' => $this->address,
+                    'transaction' => $transaction
+                ]);
+            }
+        }
     }
 
     protected function handlerTRC20Transfer(TRC20TransferDTO $transfer): void
     {
-        if( !in_array($transfer->contractAddress, $this->trc20Addresses) ) {
+        if (!in_array($transfer->contractAddress, $this->trc20Addresses)) {
             return;
         }
 
