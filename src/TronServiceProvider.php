@@ -2,7 +2,8 @@
 
 namespace PavloDotDev\LaravelTronModule;
 
-use IEXBase\TronAPI\Provider\HttpProvider;
+use PavloDotDev\LaravelTronModule\Api\Api;
+use PavloDotDev\LaravelTronModule\Api\HttpProvider;
 use PavloDotDev\LaravelTronModule\Commands\TronScanCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
@@ -23,25 +24,16 @@ class TronServiceProvider extends PackageServiceProvider
             ->runsMigrations()
             ->hasCommands(TronScanCommand::class);
 
-        $this->app->bind(\IEXBase\TronAPI\Tron::class, function() {
-            $fullNode = config('tron.full_node') ? new HttpProvider(config('tron.full_node'), 30000, false, false, [
+        $this->app->singleton(Api::class, function() {
+            $fullNode = new HttpProvider(config('tron.full_node'), [
                 'TRON-PRO-API-KEY' => config('tron.trongrid_api_key'),
-            ]) : null;
-            $solidityNode = config('tron.solidity_node') ? new HttpProvider(config('tron.solidity_node'), 30000, false, false, [
+            ]);
+            $solidityNode = new HttpProvider(config('tron.solidity_node'), [
                 'TRON-PRO-API-KEY' => config('tron.trongrid_api_key'),
-            ]) : null;
-            $eventServer = config('tron.event_server') ? new HttpProvider(config('tron.event_server'), 30000, false, false, [
-                'TRON-PRO-API-KEY' => config('tron.trongrid_api_key'),
-            ]) : null;
-            $signServer = config('tron.sign_server') ? new HttpProvider(config('tron.sign_server'), 30000, false, false, [
-                'TRON-PRO-API-KEY' => config('tron.trongrid_api_key'),
-            ]) : null;
-
-            return new \IEXBase\TronAPI\Tron($fullNode, $solidityNode, $eventServer, $signServer);
+            ]);
+            return new Api($fullNode, $solidityNode);
         });
 
-        $this->app->bind(TronGrid::class, function() {
-            return new TronGrid(config('tron.trongrid_api_key'));
-        });
+        $this->app->singleton(Tron::class);
     }
 }

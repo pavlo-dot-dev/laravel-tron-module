@@ -6,11 +6,12 @@ use Decimal\Decimal;
 use IEXBase\TronAPI\Tron;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Date;
+use PavloDotDev\LaravelTronModule\Api\Helpers\AmountHelper;
 use PavloDotDev\LaravelTronModule\DTO\AddressInfoDTO;
 use PavloDotDev\LaravelTronModule\Enums\TronTransactionType;
 use PavloDotDev\LaravelTronModule\Models\TronAddress;
 use PavloDotDev\LaravelTronModule\Models\TronTransaction;
-use PavloDotDev\LaravelTronModule\Models\TronTrc20;
+use PavloDotDev\LaravelTronModule\Models\TronTRC20;
 use PavloDotDev\LaravelTronModule\TronGrid;
 
 class SyncAddressService
@@ -52,7 +53,7 @@ class SyncAddressService
     protected function trc20Balances(): self
     {
         $this->address->trc20 = \PavloDotDev\LaravelTronModule\Facades\Tron::getTrc20()
-            ->mapWithKeys(function (TronTrc20 $trc20) {
+            ->mapWithKeys(function (TronTRC20 $trc20) {
                 return [
                     $trc20->address => $this->api
                         ->contract($trc20->address)
@@ -94,8 +95,7 @@ class SyncAddressService
     {
         $fromAddress = $this->api->hexString2Address($transactionData['raw_data']['contract'][0]['parameter']['value']['owner_address']);
         $toAddress = $this->api->hexString2Address($transactionData['raw_data']['contract'][0]['parameter']['value']['to_address']);
-        $amount = (new Decimal($transactionData['raw_data']['contract'][0]['parameter']['value']['amount']))
-            ->div(pow(10, 6));
+        $amount = $transactionData['raw_data']['contract'][0]['parameter']['value']['amount'];
 
         return TronTransaction::updateOrCreate([
             'txid' => $transactionData['txID'],
@@ -105,7 +105,7 @@ class SyncAddressService
             'time_at' => Date::createFromTimestampMs($transactionData['block_timestamp']),
             'from' => $fromAddress,
             'to' => $toAddress,
-            'amount' => $amount,
+            'amount' => AmountHelper::sunToDecimal($amount),
             'get_transaction' => $transactionData,
         ]);
     }
@@ -127,8 +127,7 @@ class SyncAddressService
         $fromAddress = $tokenData['from'];
         $toAddress = $tokenData['to'];
         $contractAddress = $tokenData['token_info']['address'];
-        $amount = (new Decimal($tokenData['value']))
-            ->div(pow(10, $tokenData['token_info']['decimals']));
+        $amount = AmountHelper::toDecimal($tokenData['value'], $tokenData['token_info']['decimals']);
 
         return TronTransaction::updateOrCreate([
             'txid' => $tokenData['transaction_id'],

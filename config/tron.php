@@ -13,8 +13,6 @@ return [
      */
     'full_node' => 'https://api.trongrid.io',
     'solidity_node' => 'https://api.trongrid.io',
-    'event_server' => 'https://api.trongrid.io',
-    'sign_server' => '',
 
     /*
      * Sets the handler to be used when Tron Wallet
@@ -34,6 +32,6 @@ return [
     'models' => [
         'wallet' => \PavloDotDev\LaravelTronModule\Models\TronWallet::class,
         'address' => \PavloDotDev\LaravelTronModule\Models\TronAddress::class,
-        'trc20' => \PavloDotDev\LaravelTronModule\Models\TronTrc20::class,
+        'trc20' => \PavloDotDev\LaravelTronModule\Models\TronTRC20::class,
     ]
 ];

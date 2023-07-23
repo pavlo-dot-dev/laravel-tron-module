@@ -53,7 +53,7 @@ class TronAddress extends Model
     public function trc20Balances(): Attribute
     {
         return new Attribute(
-            get: fn() => Tron::getTrc20()->map(fn(TronTrc20 $trc20) => [
+            get: fn() => Tron::getTrc20()->map(fn(TronTRC20 $trc20) => [
                 ...$trc20->only(['address', 'name', 'symbol', 'decimals']),
                 'balance' => $this->trc20[$trc20->address] ?? null,
             ])

@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use PavloDotDev\LaravelTronModule\Enums\TronTransactionType;
-use PavloDotDev\LaravelTronModule\Models\TronTrc20;
+use PavloDotDev\LaravelTronModule\Models\TronTRC20;
 
 return new class extends Migration {
     public function up(): void
