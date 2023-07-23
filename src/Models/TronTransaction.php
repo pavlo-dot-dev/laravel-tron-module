@@ -23,8 +23,7 @@ class TronTransaction extends Model
         'to',
         'amount',
         'trc20_contract_address',
-        'get_transaction',
-        'trc20_transaction_data',
+        'debug_data',
     ];
 
     protected $appends = [
@@ -35,8 +34,7 @@ class TronTransaction extends Model
         'type' => TronTransactionType::class,
         'time_at' => 'datetime',
         'amount' => DecimalCast::class,
-        'get_transaction' => 'json',
-        'trc20_transaction_data' => 'json',
+        'debug_data' => 'json',
     ];
 
     public function addresses(): HasMany

@@ -19,8 +19,7 @@ return new class extends Migration {
             $table->string('to');
             $table->decimal('amount', 20, 6);
             $table->string('trc20_contract_address')->nullable();
-            $table->json('get_transaction');
-            $table->json('trc20_transaction_data')->nullable();
+            $table->json('debug_data');
 
             $table->unique(['txid', 'address']);
         });

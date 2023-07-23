@@ -44,6 +44,6 @@ trait Mnemonic
         }
 
         $mnemonic = BIP39::Words($mnemonic);
-        return bin2hex($mnemonic->generateSeed($passphrase));
+        return bin2hex($mnemonic->generateSeed((string)$passphrase));
     }
 }

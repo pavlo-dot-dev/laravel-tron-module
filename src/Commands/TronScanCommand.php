@@ -19,7 +19,10 @@ class TronScanCommand extends Command
 
     public function handle(): void
     {
-        TronWallet::query()
+        /** @var class-string<TronWallet> $walletModel */
+        $walletModel = config('tron.models.wallet');
+
+        $walletModel::query()
             ->whereActive(true)
             ->each(fn(TronWallet $wallet) => $this->eachWallet($wallet));
     }

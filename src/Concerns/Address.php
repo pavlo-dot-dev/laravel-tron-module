@@ -3,11 +3,11 @@
 namespace PavloDotDev\LaravelTronModule\Concerns;
 
 use BIP\BIP44;
+use PavloDotDev\LaravelTronModule\Api\Helpers\AddressHelper;
 use PavloDotDev\LaravelTronModule\Exceptions\WalletLocked;
 use PavloDotDev\LaravelTronModule\Models\TronAddress;
 use PavloDotDev\LaravelTronModule\Models\TronWallet;
-use Tron\Support\Key;
-use Tron\Support\Key as SupportKey;
+use PavloDotDev\LaravelTronModule\Support\Key;
 
 trait Address
 {
@@ -30,7 +30,7 @@ trait Address
             ->deriveChild($index);
         $privateKey = (string)$hdKey->privateKey;
 
-        $address = SupportKey::getBase58CheckAddress('41' . Key::privateKeyToAddress($privateKey));
+        $address = AddressHelper::toBase58('41' . Key::privateKeyToAddress($privateKey));
 
         /** @var class-string<TronAddress> $addressModel */
         $addressModel = config('tron.models.address');

@@ -2,27 +2,23 @@
 
 namespace PavloDotDev\LaravelTronModule\Services;
 
-use Decimal\Decimal;
-use IEXBase\TronAPI\Tron;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Date;
-use PavloDotDev\LaravelTronModule\Api\Helpers\AmountHelper;
-use PavloDotDev\LaravelTronModule\DTO\AddressInfoDTO;
+use PavloDotDev\LaravelTronModule\Api\DTO\TransferDTO;
+use PavloDotDev\LaravelTronModule\Api\DTO\TRC20TransferDTO;
 use PavloDotDev\LaravelTronModule\Enums\TronTransactionType;
+use PavloDotDev\LaravelTronModule\Facades\Tron;
 use PavloDotDev\LaravelTronModule\Models\TronAddress;
 use PavloDotDev\LaravelTronModule\Models\TronTransaction;
 use PavloDotDev\LaravelTronModule\Models\TronTRC20;
-use PavloDotDev\LaravelTronModule\TronGrid;
 
 class SyncAddressService
 {
     protected TronAddress $address;
+    protected readonly array $trc20Addresses;
 
-    public function __construct(
-        protected readonly Tron     $api,
-        protected readonly TronGrid $tronGrid
-    )
+    public function __construct()
     {
+        $this->trc20Addresses = TronTRC20::pluck('address')->all();
     }
 
     public function run(TronAddress $address): void
@@ -37,14 +33,14 @@ class SyncAddressService
 
     protected function accountWithResources(): self
     {
-        /** @var AddressInfoDTO $addressInfo */
-        $addressInfo = \PavloDotDev\LaravelTronModule\Facades\Tron::getAddressInfo($this->address->address);
+        $getAccount = Tron::api()->getAccount($this->address->address);
+        $getAccountResources = Tron::api()->getAccountResources($this->address->address);
 
         $this->address->update([
-            'activated' => $addressInfo->activated,
-            'balance' => $addressInfo->balance,
-            'account' => $addressInfo->account,
-            'account_resources' => $addressInfo->accountResources,
+            'activated' => $getAccount->activated,
+            'balance' => $getAccount->balance,
+            'account' => $getAccount->toArray(),
+            'account_resources' => $getAccountResources->toArray(),
         ]);
 
         return $this;
@@ -52,15 +48,11 @@ class SyncAddressService
 
     protected function trc20Balances(): self
     {
-        $this->address->trc20 = \PavloDotDev\LaravelTronModule\Facades\Tron::getTrc20()
-            ->mapWithKeys(function (TronTRC20 $trc20) {
-                return [
-                    $trc20->address => $this->api
-                        ->contract($trc20->address)
-                        ->balanceOf($this->address->address)
-                ];
-            })
-            ->all();
+        $this->address->trc20 = TronTRC20::get()->mapWithKeys(function (TronTRC20 $trc20) {
+            return [
+                $trc20->address => $trc20->contract()->balanceOf($this->address->address)->toString(),
+            ];
+        })->all();
         $this->address->save();
 
         return $this;
@@ -68,109 +60,64 @@ class SyncAddressService
 
     protected function transactions(): self
     {
-        $getTransactions = $this->getTransactions();
-        $getTrc20Transactions = $this->getTrc20Transactions();
+        $transfers = Tron::api()
+            ->getTransfers($this->address->address)
+            ->limit(200)
+            ->searchInterval(false)
+            ->minTimestamp(($this->address->sync_at?->getTimestamp() ?? 0) * 1000);
+
+        $trc20Transfers = Tron::api()
+            ->getTRC20Transfers($this->address->address)
+            ->limit(200)
+            ->minTimestamp(($this->address->sync_at?->getTimestamp() ?? 0) * 1000);
 
         $this->address->update([
             'sync_at' => Date::now(),
         ]);
 
-        foreach ($getTransactions as $item) {
-            switch ($item['raw_data']['contract'][0]['type'] ?? null) {
-                case 'TransferContract':
-                    $this->handleTransferContract($item);
-                    break;
-            }
+        foreach ($transfers as $transfer) {
+            $this->handleTransfer($transfer);
         }
 
-        foreach ($getTrc20Transactions as $tokenData) {
-            $transactionData = $getTransactions->first(fn(array $item) => $item['txID'] === $tokenData['transaction_id']);
-            $this->handleTriggerSmartContract($tokenData, $transactionData);
+        foreach ($trc20Transfers as $trc20Transfer) {
+            $this->handlerTRC20Transfer($trc20Transfer);
         }
 
         return $this;
     }
 
-    protected function handleTransferContract(array $transactionData): TronTransaction
+    protected function handleTransfer(TransferDTO $transfer): void
     {
-        $fromAddress = $this->api->hexString2Address($transactionData['raw_data']['contract'][0]['parameter']['value']['owner_address']);
-        $toAddress = $this->api->hexString2Address($transactionData['raw_data']['contract'][0]['parameter']['value']['to_address']);
-        $amount = $transactionData['raw_data']['contract'][0]['parameter']['value']['amount'];
-
-        return TronTransaction::updateOrCreate([
-            'txid' => $transactionData['txID'],
+        TronTransaction::updateOrCreate([
+            'txid' => $transfer->txid,
             'address' => $this->address->address,
         ], [
-            'type' => $toAddress === $this->address->address ? TronTransactionType::INCOMING : TronTransactionType::OUTGOING,
-            'time_at' => Date::createFromTimestampMs($transactionData['block_timestamp']),
-            'from' => $fromAddress,
-            'to' => $toAddress,
-            'amount' => AmountHelper::sunToDecimal($amount),
-            'get_transaction' => $transactionData,
+            'type' => $transfer->to === $this->address->address ? TronTransactionType::INCOMING : TronTransactionType::OUTGOING,
+            'time_at' => $transfer->time,
+            'from' => $transfer->from,
+            'to' => $transfer->to,
+            'amount' => $transfer->value,
+            'debug_data' => $transfer->toArray(),
         ]);
     }
 
-    protected function handleTriggerSmartContract(array $tokenData, array $transactionData = null): ?TronTransaction
+    protected function handlerTRC20Transfer(TRC20TransferDTO $transfer): void
     {
-        if ($tokenData['type'] !== 'Transfer') {
-            return null;
+        if( !in_array($transfer->contractAddress, $this->trc20Addresses) ) {
+            return;
         }
 
-        if ($transactionData === null) {
-            $transactionData = $this->api->getTransaction($tokenData['transaction_id']);
-        }
-
-        if (($transactionData['ret'][0]['contractRet'] ?? null) !== 'SUCCESS') {
-            return null;
-        }
-
-        $fromAddress = $tokenData['from'];
-        $toAddress = $tokenData['to'];
-        $contractAddress = $tokenData['token_info']['address'];
-        $amount = AmountHelper::toDecimal($tokenData['value'], $tokenData['token_info']['decimals']);
-
-        return TronTransaction::updateOrCreate([
-            'txid' => $tokenData['transaction_id'],
+        TronTransaction::updateOrCreate([
+            'txid' => $transfer->txid,
             'address' => $this->address->address,
         ], [
-            'type' => $toAddress === $this->address->address ? TronTransactionType::INCOMING : TronTransactionType::OUTGOING,
-            'time_at' => Date::createFromTimestampMs($tokenData['block_timestamp']),
-            'from' => $fromAddress,
-            'to' => $toAddress,
-            'amount' => $amount,
-            'trc20_contract_address' => $contractAddress,
-            'get_transaction' => $transactionData,
-            'trc20_transaction_data' => $tokenData,
+            'type' => $transfer->to === $this->address->address ? TronTransactionType::INCOMING : TronTransactionType::OUTGOING,
+            'time_at' => $transfer->time,
+            'from' => $transfer->from,
+            'to' => $transfer->to,
+            'amount' => $transfer->value,
+            'trc20_contract_address' => $transfer->contractAddress,
+            'debug_data' => $transfer->toArray(),
         ]);
-    }
-
-    protected function getTransactions(): Collection
-    {
-        $response = $this->tronGrid
-            ->getTransactionsByAddress($this->address->address, [
-                'search_internal' => 'false',
-                'limit' => 200,
-                'min_timestamp' => ($this->address->sync_at?->getTimestamp() ?? 0) * 1000,
-            ]);
-
-        return collect($response['data'] ?? [])
-            ->filter(fn(array $item) => ($item['ret'][0]['contractRet'] ?? null) === 'SUCCESS');
-    }
-
-    protected function getTrc20Transactions(): Collection
-    {
-        $result = collect();
-
-        foreach (\PavloDotDev\LaravelTronModule\Facades\Tron::getTrc20() as $trc20) {
-            $response = $this->tronGrid
-                ->getContractTransactionsByAddress($this->address->address, [
-                    'limit' => 200,
-                    'contract_address' => $trc20->address,
-                    'min_timestamp' => ($this->address->sync_at?->getTimestamp() ?? 0) * 1000,
-                ]);
-            $result = $result->merge($response['data'] ?? []);
-        }
-
-        return $result;
     }
 }
