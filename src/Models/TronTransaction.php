@@ -4,11 +4,11 @@ namespace PavloDotDev\LaravelTronModule\Models;
 
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use PavloDotDev\LaravelTronModule\Casts\DecimalCast;
 use PavloDotDev\LaravelTronModule\Enums\TronTransactionType;
-use PavloDotDev\LaravelTronModule\Facades\Tron;
 
 class TronTransaction extends Model
 {
@@ -63,10 +63,15 @@ class TronTransaction extends Model
         );
     }
 
+    public function trc20(): BelongsTo
+    {
+        return $this->belongsTo(TronTRC20::class, 'trc20_contract_address', 'address');
+    }
+
     public function symbol(): Attribute
     {
         return new Attribute(
-            get: fn() => $this->trc20_contract_address ? Tron::getTrc20($this->trc20_contract_address)?->symbol : 'TRX'
+            get: fn() => $this->trc20_contract_address ? ($this->trc20?->symbol ?: 'TOKEN') : 'TRX'
         );
     }
 }
