@@ -2,10 +2,7 @@
 
 namespace PavloDotDev\LaravelTronModule\Api\Methods;
 
-use Illuminate\Support\Collection;
 use PavloDotDev\LaravelTronModule\Api\ApiManager;
-use PavloDotDev\LaravelTronModule\Api\DTO\GetAccountTRC20TransactionsDTO;
-use PavloDotDev\LaravelTronModule\Api\DTO\TransferDTO;
 use PavloDotDev\LaravelTronModule\Api\DTO\TRC20TransferDTO;
 use PavloDotDev\LaravelTronModule\Api\Enums\Confirmation;
 use PavloDotDev\LaravelTronModule\Api\Enums\OrderBy;
@@ -19,17 +16,14 @@ class TRC20Transfers implements \Iterator
     protected ?int $minTimestamp = null;
     protected ?int $maxTimestamp = null;
     protected ?string $contractAddress = null;
-
-    protected Collection $collection;
+    protected array $collection = [];
     protected bool $hasNext = true;
     protected int $current = 0;
 
     public function __construct(
         protected readonly ApiManager $manager,
-        public readonly string        $address,
-    )
-    {
-        $this->collection = collect();
+        public readonly string $address,
+    ) {
     }
 
     public function onlyConfirmation(?Confirmation $confirmed): static
@@ -55,7 +49,7 @@ class TRC20Transfers implements \Iterator
 
     public function orderBy(?OrderBy $orderBy): static
     {
-        $this->orderBy = $orderBy ? 'block_timestamp,' . $orderBy->value : null;
+        $this->orderBy = $orderBy ? 'block_timestamp,'.$orderBy->value : null;
 
         return $this;
     }
@@ -92,7 +86,7 @@ class TRC20Transfers implements \Iterator
             'contract_address' => $this->contractAddress,
         ];
 
-        if( $this->onlyConfirmation !== null ) {
+        if ($this->onlyConfirmation !== null) {
             $query[$this->onlyConfirmation ? 'only_confirmed' : 'only_unconfirmed'] = true;
         }
 
@@ -101,7 +95,7 @@ class TRC20Transfers implements \Iterator
 
     public function current(): TRC20TransferDTO
     {
-        return $this->collection->get($this->current);
+        return $this->collection[$this->current];
     }
 
     public function next(): void
@@ -109,14 +103,14 @@ class TRC20Transfers implements \Iterator
         $this->current++;
     }
 
-    public function key(): mixed
+    public function key(): int
     {
         return $this->current;
     }
 
     public function valid(): bool
     {
-        if ($this->collection->has($this->current)) {
+        if (isset($this->collection[$this->current])) {
             return true;
         }
 
@@ -124,11 +118,12 @@ class TRC20Transfers implements \Iterator
             return false;
         }
 
-        $this->collection = $this->collection->merge(
-            $this->request()
-        );
+        $this->collection = array_values([
+            ...$this->collection,
+            ...$this->request(),
+        ]);
 
-        return $this->collection->has($this->current);
+        return isset($this->collection[$this->current]);
     }
 
     public function rewind(): void
@@ -138,18 +133,23 @@ class TRC20Transfers implements \Iterator
         $this->current = 0;
     }
 
-    protected function request(): Collection
+    protected function request(): array
     {
         $data = $this->manager->request(
-            'v1/accounts/' . $this->address . '/transactions/trc20',
+            'v1/accounts/'.$this->address.'/transactions/trc20',
             $this->getQuery()
         );
 
         $this->fingerprint = $data['meta']['fingerprint'] ?? null;
         $this->hasNext = !!$this->fingerprint;
 
-        return collect($data['data'])
-            ->map(fn(array $item) => TRC20TransferDTO::fromArray($item))
-            ->filter();
+        return array_values(
+            array_filter(
+                array_map(
+                    fn(array $item) => TRC20TransferDTO::fromArray($item),
+                    $data['data']
+                )
+            )
+        );
     }
 }

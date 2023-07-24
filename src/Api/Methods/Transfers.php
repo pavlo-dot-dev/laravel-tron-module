@@ -2,7 +2,6 @@
 
 namespace PavloDotDev\LaravelTronModule\Api\Methods;
 
-use Illuminate\Support\Collection;
 use PavloDotDev\LaravelTronModule\Api\ApiManager;
 use PavloDotDev\LaravelTronModule\Api\DTO\TransferDTO;
 use PavloDotDev\LaravelTronModule\Api\Enums\Confirmation;
@@ -20,13 +19,12 @@ class Transfers implements \Iterator
     protected ?int $maxTimestamp = null;
     protected bool $searchInterval = true;
 
-    protected Collection $collection;
+    protected array $collection = [];
     protected bool $hasNext = true;
     protected int $current = 0;
 
     public function __construct(protected readonly ApiManager $manager, public readonly string $address)
     {
-        $this->collection = collect();
     }
 
     public function onlyConfirmation(?Confirmation $confirmed): static
@@ -52,7 +50,7 @@ class Transfers implements \Iterator
 
     public function orderBy(?OrderBy $orderBy): static
     {
-        $this->orderBy = $orderBy ? 'block_timestamp,' . $orderBy->value : null;
+        $this->orderBy = $orderBy ? 'block_timestamp,'.$orderBy->value : null;
 
         return $this;
     }
@@ -101,7 +99,7 @@ class Transfers implements \Iterator
 
     public function current(): TransferDTO
     {
-        return $this->collection->get($this->current);
+        return $this->collection[$this->current];
     }
 
     public function next(): void
@@ -109,14 +107,14 @@ class Transfers implements \Iterator
         $this->current++;
     }
 
-    public function key(): mixed
+    public function key(): int
     {
         return $this->current;
     }
 
     public function valid(): bool
     {
-        if ($this->collection->has($this->current)) {
+        if (isset($this->collection[$this->current])) {
             return true;
         }
 
@@ -124,11 +122,12 @@ class Transfers implements \Iterator
             return false;
         }
 
-        $this->collection = $this->collection->merge(
-            $this->request()
-        );
+        $this->collection = array_values([
+            ...$this->collection,
+            ...$this->request(),
+        ]);
 
-        return $this->collection->has($this->current);
+        return isset($this->collection[$this->current]);
     }
 
     public function rewind(): void
@@ -138,18 +137,23 @@ class Transfers implements \Iterator
         $this->current = 0;
     }
 
-    protected function request(): Collection
+    protected function request(): array
     {
         $data = $this->manager->request(
-            'v1/accounts/' . $this->address . '/transactions',
+            'v1/accounts/'.$this->address.'/transactions',
             $this->getQuery()
         );
 
         $this->fingerprint = $data['meta']['fingerprint'] ?? null;
         $this->hasNext = !!$this->fingerprint;
 
-        return collect($data['data'])
-            ->map(fn(array $item) => TransferDTO::fromArray($item))
-            ->filter();
+        return array_values(
+            array_filter(
+                array_map(
+                    fn(array $item) => TransferDTO::fromArray($item),
+                    $data['data']
+                )
+            )
+        );
     }
 }

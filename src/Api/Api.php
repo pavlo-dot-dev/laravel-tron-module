@@ -3,8 +3,6 @@
 namespace PavloDotDev\LaravelTronModule\Api;
 
 use Decimal\Decimal;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\File;
 use kornrunner\Secp256k1;
 use kornrunner\Signature\Signature;
 use PavloDotDev\LaravelTronModule\Api\DTO\AccountResourcesDTO;
@@ -20,7 +18,7 @@ use PavloDotDev\LaravelTronModule\Api\Methods\TRC20Transfers;
 class Api
 {
     public readonly ApiManager $manager;
-    protected readonly Collection $chainParameters;
+    protected readonly array $chainParameters;
 
     public function __construct(
         ?HttpProvider $fullNode = null,
@@ -28,8 +26,7 @@ class Api
         ?HttpProvider $eventServer = null,
         ?HttpProvider $signServer = null,
         ?HttpProvider $explorer = null,
-    )
-    {
+    ) {
         $this->manager = new ApiManager(
             compact(
                 'fullNode',
@@ -39,17 +36,21 @@ class Api
                 'explorer'
             )
         );
-        $this->chainParameters = collect(json_decode(File::get(__DIR__.'/Resources/chain_parameters.json'), true)['chainParameter'] ?? []);
+
+        $chainParametersFromFile = file_get_contents(__DIR__.'/Resources/chain_parameters.json');
+        $chainParametersFromFile = json_decode($chainParametersFromFile, true);
+        $chainParameters = [];
+        foreach ($chainParametersFromFile['chainParameter'] ?? [] as $item) {
+            if (isset($item['key'], $item['value'])) {
+                $chainParameters[$item['key']] = $item['value'];
+            }
+        }
+        $this->chainParameters = $chainParameters;
     }
 
     public function chainParameter(string $name, mixed $default = null): mixed
     {
-        $item = $this->chainParameters->firstWhere('key', $name);
-        if( $item ) {
-            return $item['value'];
-        }
-
-        return $default;
+        return $this->chainParameters[$name] ?? $default;
     }
 
     public function isConnected(): array
@@ -118,7 +119,7 @@ class Api
         $data = $this->manager->request('wallet/gettransactioninfobyid', null, [
             'value' => $txid
         ]);
-        if( count($data) === 0 ) {
+        if (count($data) === 0) {
             throw new \Exception('Transaction '.$txid.' not found');
         }
 
@@ -130,7 +131,7 @@ class Api
         $data = $this->manager->request('wallet/gettransactionbyid', [
             'value' => $txid,
         ]);
-        if( count($data) === 0 ) {
+        if (count($data) === 0) {
             throw new \Exception('Transaction '.$txid.' not found');
         }
 
@@ -151,8 +152,13 @@ class Api
         );
     }
 
-    public function transferTRC20(string $contractAddress, string $from, string $to, string|int|float|Decimal $amount, string|int|float|Decimal $feeLimit = 30): TRC20Transfer
-    {
+    public function transferTRC20(
+        string $contractAddress,
+        string $from,
+        string $to,
+        string|int|float|Decimal $amount,
+        string|int|float|Decimal $feeLimit = 30
+    ): TRC20Transfer {
         $contract = $this->getTRC20Contract($contractAddress);
         $from = AddressHelper::toBase58($from);
         $to = AddressHelper::toBase58($to);
@@ -175,7 +181,7 @@ class Api
 
         /** @var Signature $sign */
         $sign = $secp->sign($transaction['txID'], $privateKey, ['canonical' => false]);
-        $transaction['signature'] = $sign->toHex() . bin2hex(implode('', array_map('chr', [$sign->getRecoveryParam()])));
+        $transaction['signature'] = $sign->toHex().bin2hex(implode('', array_map('chr', [$sign->getRecoveryParam()])));
 
         return $transaction;
     }

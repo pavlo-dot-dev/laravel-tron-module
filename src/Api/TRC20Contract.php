@@ -3,8 +3,6 @@
 namespace PavloDotDev\LaravelTronModule\Api;
 
 use Decimal\Decimal;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\File;
 use PavloDotDev\LaravelTronModule\Api\Helpers\AddressHelper;
 use PavloDotDev\LaravelTronModule\Api\Helpers\AmountHelper;
 use phpseclib\Math\BigInteger;
@@ -19,7 +17,7 @@ use Web3\Contracts\Types\Uinteger;
 
 class TRC20Contract
 {
-    protected readonly Collection $abiData;
+    protected readonly array $abiData;
 
     protected ?string $name = null;
     protected ?string $symbol = null;
@@ -27,15 +25,9 @@ class TRC20Contract
 
     public function __construct(
         protected readonly ApiManager $manager,
-        public readonly string        $address,
-    )
-    {
-        $this->abiData = collect(
-            json_decode(
-                File::get(__DIR__ . '/Resources/trc20.json'),
-                true
-            )
-        );
+        public readonly string $address,
+    ) {
+        $this->abiData = json_decode(file_get_contents(__DIR__.'/Resources/trc20.json'), true);
     }
 
     public function name(): string
@@ -88,31 +80,45 @@ class TRC20Contract
             str_pad($addressHex, 64, "0", STR_PAD_LEFT)
         ], $address);
         $value = $trigger[0] ?? null;
-        if( !($value instanceof BigInteger) ) {
+        if (!($value instanceof BigInteger)) {
             throw new \Exception('Failed to retrieve TRC20 token balance of address "'.$address.'"');
         }
 
         return AmountHelper::toDecimal($value->toString(), $this->decimals());
     }
 
-    public function triggerConstantContract(string $function, array $params = null, string $ownerAddress = null, bool $raw = false): array
+    protected function getAbiFunction(string $name): array
     {
+        foreach ($this->abiData as $item) {
+            if (($item['name'] ?? null) === $name) {
+                return $item;
+            }
+        }
+
+        throw new \Exception('Function '.$name.' not found in ABI');
+    }
+
+    public function triggerConstantContract(
+        string $function,
+        array $params = null,
+        string $ownerAddress = null,
+        bool $raw = false
+    ): array {
         if ($params === null) {
             $params = [];
         }
-        $ownerAddress = $ownerAddress ? AddressHelper::toHex($ownerAddress) : '410000000000000000000000000000000000000000';
+        $ownerAddress = $ownerAddress ? AddressHelper::toHex(
+            $ownerAddress
+        ) : '410000000000000000000000000000000000000000';
         $contractAddress = AddressHelper::toHex($this->address);
 
-        $abiFunction = $this->abiData->firstWhere('name', $function);
-        if (!$abiFunction) {
-            throw new \Exception('Function ' . $function . ' not found in ABI');
-        }
+        $abiFunction = $this->getAbiFunction($function);
         if (count($abiFunction['inputs']) !== count($params)) {
-            throw new \Exception('For function ' . $function . ' params count must be ' . count($abiFunction['inputs']));
+            throw new \Exception('For function '.$function.' params count must be '.count($abiFunction['inputs']));
         }
 
         $inputs = array_map(fn($item) => $item['type'], $abiFunction['inputs']);
-        $functionSelector = $abiFunction['name'] . '(' . implode(',', $inputs) . ')';
+        $functionSelector = $abiFunction['name'].'('.implode(',', $inputs).')';
 
         $ethAbi = new Ethabi([
             'address' => new Address,
@@ -140,7 +146,7 @@ class TRC20Contract
             throw new \Exception($message ?: json_encode($data));
         }
 
-        if( $raw ) {
+        if ($raw) {
             return $data;
         }
 
@@ -151,27 +157,32 @@ class TRC20Contract
         return $data['transaction'];
     }
 
-    public function triggerSmartContract(string $function, array $params = null, string $ownerAddress = null, string|int|float|Decimal $feeLimit = 1, string|int|float|Decimal $cellValue = 0, bool $raw = false): array
-    {
+    public function triggerSmartContract(
+        string $function,
+        array $params = null,
+        string $ownerAddress = null,
+        string|int|float|Decimal $feeLimit = 1,
+        string|int|float|Decimal $cellValue = 0,
+        bool $raw = false
+    ): array {
         $feeLimit = AmountHelper::decimalToSun($feeLimit instanceof Decimal ? $feeLimit->toString() : $feeLimit);
         $cellValue = AmountHelper::decimalToSun($cellValue instanceof Decimal ? $cellValue->toString() : $cellValue);
 
         if ($params === null) {
             $params = [];
         }
-        $ownerAddress = $ownerAddress ? AddressHelper::toHex($ownerAddress) : '410000000000000000000000000000000000000000';
+        $ownerAddress = $ownerAddress ? AddressHelper::toHex(
+            $ownerAddress
+        ) : '410000000000000000000000000000000000000000';
         $contractAddress = AddressHelper::toHex($this->address);
 
-        $abiFunction = $this->abiData->firstWhere('name', $function);
-        if (!$abiFunction) {
-            throw new \Exception('Function ' . $function . ' not found in ABI');
-        }
+        $abiFunction = $this->getAbiFunction($function);
         if (count($abiFunction['inputs']) !== count($params)) {
-            throw new \Exception('For function ' . $function . ' params count must be ' . count($abiFunction['inputs']));
+            throw new \Exception('For function '.$function.' params count must be '.count($abiFunction['inputs']));
         }
 
         $inputs = array_map(fn($item) => $item['type'], $abiFunction['inputs']);
-        $functionSelector = $abiFunction['name'] . '(' . implode(',', $inputs) . ')';
+        $functionSelector = $abiFunction['name'].'('.implode(',', $inputs).')';
 
         $ethAbi = new Ethabi([
             'address' => new Address,
@@ -201,7 +212,7 @@ class TRC20Contract
             throw new \Exception($message ?: json_encode($data));
         }
 
-        if( $raw ) {
+        if ($raw) {
             return $data;
         }
 
