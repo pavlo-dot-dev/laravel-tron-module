@@ -15,7 +15,7 @@
     "tron"
   ],
   "require": {
-    "php": "^8.0",
+    "php": "^8.1",
     "ext-gmp": "*",
     "ext-decimal": "*",
     "illuminate/contracts": "^10.0",
