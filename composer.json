@@ -24,7 +24,8 @@
     "minter/minter-php-bip-44": "^1.2",
     "web3p/web3.php": "^0.1.6",
     "kornrunner/secp256k1": "^0.2.0",
-    "simplito/elliptic-php": "^1.0"
+    "simplito/elliptic-php": "^1.0",
+    "ext-ctype": "*"
   },
   "autoload": {
     "psr-4": {

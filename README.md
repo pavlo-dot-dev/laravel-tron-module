@@ -23,25 +23,178 @@
 
 **Laravel Tron Module** is a Laravel package for work with cryptocurrency Tron, with the support TRC-20 tokens.It allows you to generate HD wallets using mnemonic phrase, validate addresses, get addresses balances and resources, preview and send TRX/TRC-20 tokens. You can automate the acceptance and withdrawal of cryptocurrency in your application.
 
-## Support Method
+## Examples
 
-- Generate and validate Mnemonic Phrase
-- Create HD Wallet using Mnemonic Phrase
-- Generate Tron Address using index of HD Wallet
-- Validate Address
-- Get address balances and resources
-- Get address transfers (TRX + TRC-20)
-- Preview send TRX/TRC-20 + Send (Broadcast) Transaction
+BIP39: Generate Mnemonic Phrase:
+```php
+$mnemonic = Tron::mnemonicGenerate(15);
+print_r($mnemonic); // string[] length 15 words
+```
+
+BIP39: Validate Mnemonic Phrase:
+```php
+$mnemonic = 'record jelly ladder exotic hold access test minute target fortune duck disease express damp attend';
+$isValid = Tron::mnemonicValidate($mnemonic);
+echo $isValid ? 'OK' : 'ERROR';
+```
+
+BIP39: Get seed by Mnemonic Phrase:
+```php
+$mnemonic = 'record jelly ladder exotic hold access test minute target fortune duck disease express damp attend';
+$mnemonicPassphrase = 'passphrase string';
+$seed = Tron::mnemonicSeed($mnemonic, $mnemonicPassphrase);
+echo $seed; // Seed in hex format
+```
+
+Create HD Wallet:
+```php
+$name = 'my-wallet';
+$password = 'password for encrypt mnemonic, seed and private keys';
+$mnemonic = 'record jelly ladder exotic hold access test minute target fortune duck disease express damp attend';
+$mnemonicPassphrase = null;
+
+$tronWallet = Tron::createWallet($name, $password, $mnemonic, $mnemonicPassphrase);
+$tronWallet->save();
+```
+
+Unlock HD Wallet:
+```php
+$password = 'password for encrypt mnemonic, seed and private keys';
+
+$tronWallet = TronWallet::first();
+$isUnlocked = $tronWallet->encrypted()->unlock($password);
+echo $isUnlocked ? 'WALLET UNLOCKED' : 'INCORRECT PASSWORD';
+
+echo $tronWallet->plainMnemonic; // Print mnemonic phrase
+```
+
+Generate Address:
+```php
+$tronWallet = TronWallet::first();
+$tronWallet->encrypted()->unlock($password);
+
+$index = 0; // Address index (if null - automatic)
+$tronAddress = Tron::createAddress($tronWallet, $index);
+$tronAddress->save();
+
+echo $tronAddress->address; // Print Address
+echo $tronAddress->private_key; // Print private key
+```
+
+Add TRC-20 token for tracking:
+```php
+$contractAddress = 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t'; // Contract Address Tether USDT
+$tronTRC20 = Tron::createTRC20($contractAddress);
+$tronTRC20->save();
+
+$balanceOfAddress = 'THPvaUhoh2Qn2y9THCZML3H815hhFhn5YC';
+echo $tronTRC20->contract()->balanceOf($balanceOfAddress); // Get TRC-20 Token balance of address
+```
+
+Get Address info (balances + resources):
+```php
+$address = 'THPvaUhoh2Qn2y9THCZML3H815hhFhn5YC';
+
+$getAccount = Tron::api()->getAccount($address);
+print_r($getAccount->toArray());
+
+$getAccountResources = Tron::api()->getAccountResources($address);
+print_r($getAccountResources->toArray());
+```
+
+Validate Address:
+```php
+$address = 'THPvaUhoh2Qn2y9THCZML3H815hhFhn5YC';
+
+$isValid = Tron::api()->validateAddress($address); // bool
+```
+
+Get Address Transfers (only TRX):
+```php
+$address = 'THPvaUhoh2Qn2y9THCZML3H815hhFhn5YC';
+
+$transfers = Tron::api()->getTransfers($address)->limit(200);
+
+foreach( $transfers as $transfer ) {
+    print_r($transfer->toArray());
+}
+```
+
+Get Address TRC-20 Transfers:
+```php
+$address = 'THPvaUhoh2Qn2y9THCZML3H815hhFhn5YC';
+
+$transfers = Tron::api()->getTRC20Transfers($address)->limit(200);
+
+foreach( $transfers as $transfer ) {
+    print_r($transfer->toArray());
+}
+```
+
+Get Transaction Info:
+```php
+$txid = '...';
+$info = Tron::api()->getTransactionInfo($txid);
+print_r($info->toArray());
+```
+
+Create TRX transfer, preview and send:
+```php
+$from = 'THPvaUhoh2Qn2y9THCZML3H815hhFhn5YC';
+$to = 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t';
+$amount = 1;
+
+$walletPassword = 'here wallet password';
+$wallet = TronWallet::first();
+$wallet->encrypted()->unlock($walletPassword);
+
+$address = $wallet->addresses->first();
+$privateKey = $wallet->encrypted()->decode($address->private_key);
+
+$transfer = Tron::api()->transfer($from, $to, $amount);
+$preview = $transfer->preview();
+print_r($preview->toArray());
+
+$send = $transfer->send($privateKey);
+print_r($send->toArray());
+```
+
+Create TRC-20 transfer, preview and send:
+```php
+$contractAddress = 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t';
+$from = 'THPvaUhoh2Qn2y9THCZML3H815hhFhn5YC';
+$to = 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t';
+$amount = 1;
+
+$walletPassword = 'here wallet password';
+$wallet = TronWallet::first();
+$wallet->encrypted()->unlock($walletPassword);
+
+$address = $wallet->addresses->first();
+$privateKey = $wallet->encrypted()->decode($address->private_key);
+
+$transfer = Tron::api()->transferTRC20($contractAddress, $from, $to, $amount);
+$preview = $transfer->preview();
+print_r($preview->toArray());
+
+$send = $transfer->send($privateKey);
+print_r($send->toArray());
+```
+
+## Helpers
+
+Convert Base58 address to Hex:
 
 ```php
-$wallet = Tron::createWallet('wallet-name', 'password', 'mnemonic-phrase', 'mnemonic-passphrase');
-$address = Tron::createAddress($wallet, 0);
+$addressBase58 = 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t';
+$addressHex = AddressHelper::toHex($addressBase58);
+```
 
-// Get Address Balance
-$balance = Tron::api()->getAccount($address->address)->balance;
+Convert Hex address to Base58:
 
-// Transfer TRX
-Tron::api()->transfer($address->address, 'address-receiver', '1');
+```php
+$addressHex = '11234....412412';
+$addressBase58 = AddressHelper::toBase58($addressHex);
 ```
 
 ## Install
@@ -93,5 +246,5 @@ Generate Address:
 The following versions of PHP are supported by this version.
 
 * PHP 8.1 and older
-* PHP Extensions: Decimal, GMP, BCMath.
+* PHP Extensions: Decimal, GMP, BCMath, CType.
 * Laravel Queues
