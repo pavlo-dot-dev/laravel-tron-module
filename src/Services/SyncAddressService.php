@@ -102,6 +102,33 @@ class SyncAddressService
             'debug_data' => $transfer->toArray(),
         ]);
 
+        $this->webhook($transaction);
+    }
+
+    protected function handlerTRC20Transfer(TRC20TransferDTO $transfer): void
+    {
+        if (!in_array($transfer->contractAddress, $this->trc20Addresses)) {
+            return;
+        }
+
+        $transaction = TronTransaction::updateOrCreate([
+            'txid' => $transfer->txid,
+            'address' => $this->address->address,
+        ], [
+            'type' => $transfer->to === $this->address->address ? TronTransactionType::INCOMING : TronTransactionType::OUTGOING,
+            'time_at' => $transfer->time,
+            'from' => $transfer->from,
+            'to' => $transfer->to,
+            'amount' => $transfer->value,
+            'trc20_contract_address' => $transfer->contractAddress,
+            'debug_data' => $transfer->toArray(),
+        ]);
+
+        $this->webhook($transaction);
+    }
+
+    protected function webhook(TronTransaction $transaction): void
+    {
         if ($transaction->wasRecentlyCreated) {
             /** @var class-string<WebhookHandlerInterface> $webhookHandlerModel */
             $webhookHandlerModel = config('tron.webhook_handler');
@@ -114,25 +141,5 @@ class SyncAddressService
                 ]);
             }
         }
-    }
-
-    protected function handlerTRC20Transfer(TRC20TransferDTO $transfer): void
-    {
-        if (!in_array($transfer->contractAddress, $this->trc20Addresses)) {
-            return;
-        }
-
-        TronTransaction::updateOrCreate([
-            'txid' => $transfer->txid,
-            'address' => $this->address->address,
-        ], [
-            'type' => $transfer->to === $this->address->address ? TronTransactionType::INCOMING : TronTransactionType::OUTGOING,
-            'time_at' => $transfer->time,
-            'from' => $transfer->from,
-            'to' => $transfer->to,
-            'amount' => $transfer->value,
-            'trc20_contract_address' => $transfer->contractAddress,
-            'debug_data' => $transfer->toArray(),
-        ]);
     }
 }
