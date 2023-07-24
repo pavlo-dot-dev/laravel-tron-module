@@ -23,6 +23,8 @@
 
 **Laravel Tron Module** is a Laravel package for work with cryptocurrency Tron, with the support TRC-20 tokens.It allows you to generate HD wallets using mnemonic phrase, validate addresses, get addresses balances and resources, preview and send TRX/TRC-20 tokens. You can automate the acceptance and withdrawal of cryptocurrency in your application.
 
+You can contact me for help in integrating payment acceptance into your project.
+
 ## Examples
 
 BIP39: Generate Mnemonic Phrase:
@@ -240,6 +242,29 @@ Generate Address:
 ```bash
 > php artisan tron:generate-address
 ```
+
+## WebHook
+
+You can set up a WebHook that will be called when a new incoming or outgoing TRX/TRC-20 transfer is detected.
+
+In file config/tron.php you can set param:
+
+```php
+'webhook_handler' => \PavloDotDev\LaravelTronModule\Handlers\EmptyWebhookHandler::class,
+```
+
+Example WebHook handler:
+
+```php
+class EmptyWebhookHandler implements WebhookHandlerInterface
+{
+    public function handle(TronAddress $address, TronTransaction $transaction): void
+    {
+        Log::error('NEW TRANSACTION FOR ADDRESS '.$address->id.' = '.$transaction->txid);
+    }
+}
+```
+
 
 ## Requirements
 

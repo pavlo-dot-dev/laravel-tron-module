@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Log;
 use PavloDotDev\LaravelTronModule\Models\TronAddress;
 use PavloDotDev\LaravelTronModule\Models\TronTransaction;
 
-class EmptyWebhookHandlerInterface implements WebhookHandlerInterface
+class EmptyWebhookHandler implements WebhookHandlerInterface
 {
     public function handle(TronAddress $address, TronTransaction $transaction): void
     {
