@@ -77,20 +77,32 @@ class SyncAddressService
             'sync_at' => Date::now(),
         ]);
 
+        $transactions = [];
+
         foreach ($transfers as $transfer) {
-            $this->handleTransfer($transfer);
+            $transaction = $this->handleTransfer($transfer);
+            if( $transaction ) {
+                $transactions[] = $transaction;
+            }
         }
 
         foreach ($trc20Transfers as $trc20Transfer) {
-            $this->handlerTRC20Transfer($trc20Transfer);
+            $transaction = $this->handlerTRC20Transfer($trc20Transfer);
+            if( $transaction ) {
+                $transactions[] = $transaction;
+            }
+        }
+
+        foreach($transactions as $transaction) {
+            $this->webhook($transaction);
         }
 
         return $this;
     }
 
-    protected function handleTransfer(TransferDTO $transfer): void
+    protected function handleTransfer(TransferDTO $transfer): TronTransaction
     {
-        $transaction = TronTransaction::updateOrCreate([
+        return TronTransaction::updateOrCreate([
             'txid' => $transfer->txid,
             'address' => $this->address->address,
         ], [
@@ -101,17 +113,15 @@ class SyncAddressService
             'amount' => $transfer->value,
             'debug_data' => $transfer->toArray(),
         ]);
-
-        $this->webhook($transaction);
     }
 
-    protected function handlerTRC20Transfer(TRC20TransferDTO $transfer): void
+    protected function handlerTRC20Transfer(TRC20TransferDTO $transfer): ?TronTransaction
     {
         if (!in_array($transfer->contractAddress, $this->trc20Addresses)) {
-            return;
+            return null;
         }
 
-        $transaction = TronTransaction::updateOrCreate([
+        return TronTransaction::updateOrCreate([
             'txid' => $transfer->txid,
             'address' => $this->address->address,
         ], [
@@ -123,8 +133,6 @@ class SyncAddressService
             'trc20_contract_address' => $transfer->contractAddress,
             'debug_data' => $transfer->toArray(),
         ]);
-
-        $this->webhook($transaction);
     }
 
     protected function webhook(TronTransaction $transaction): void
