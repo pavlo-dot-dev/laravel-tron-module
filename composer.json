@@ -9,6 +9,11 @@
       "email": "info@pavlo.dev"
     }
   ],
+  "keywords": [
+    "pavlodotdev",
+    "laravel",
+    "tron"
+  ],
   "require": {
     "php": "^8.0",
     "ext-gmp": "*",
