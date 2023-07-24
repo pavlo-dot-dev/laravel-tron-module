@@ -4,6 +4,9 @@ namespace PavloDotDev\LaravelTronModule;
 
 use PavloDotDev\LaravelTronModule\Api\Api;
 use PavloDotDev\LaravelTronModule\Api\HttpProvider;
+use PavloDotDev\LaravelTronModule\Commands\CreateNewTRC20Command;
+use PavloDotDev\LaravelTronModule\Commands\CreateNewWalletCommand;
+use PavloDotDev\LaravelTronModule\Commands\GenerateAddressCommand;
 use PavloDotDev\LaravelTronModule\Commands\TronScanCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
@@ -22,7 +25,12 @@ class TronServiceProvider extends PackageServiceProvider
                 '2023_01_01_00004_create_tron_transactions_table'
             ])
             ->runsMigrations()
-            ->hasCommands(TronScanCommand::class);
+            ->hasCommands(
+                CreateNewWalletCommand::class,
+                GenerateAddressCommand::class,
+                CreateNewTRC20Command::class,
+                TronScanCommand::class,
+            );
 
         $this->app->singleton(Api::class, function() {
             $fullNode = new HttpProvider(config('tron.full_node'), [
