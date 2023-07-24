@@ -17,7 +17,6 @@ return new class extends Migration {
             $table->timestamp('sync_at')->nullable();
             $table->decimal('balance', 20, 6)->nullable();
             $table->json('trc20')->nullable();
-            $table->boolean('active')->default(true);
             $table->timestamps();
         });
     }

@@ -21,8 +21,7 @@ class TronWallet extends Model
         'seed',
         'sync_at',
         'balance',
-        'trc20',
-        'active'
+        'trc20'
     ];
 
     protected $hidden = [
@@ -43,7 +42,6 @@ class TronWallet extends Model
         'sync_at' => 'datetime',
         'balance' => DecimalCast::class,
         'trc20' => 'json',
-        'active' => 'boolean',
     ];
 
     protected ?Encrypted $encrypted = null;
