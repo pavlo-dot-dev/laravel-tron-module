@@ -68,7 +68,7 @@ class TronTransaction extends Model
         return $this->belongsTo(TronTRC20::class, 'trc20_contract_address', 'address');
     }
 
-    public function symbol(): Attribute
+    protected function symbol(): Attribute
     {
         return new Attribute(
             get: fn () => $this->trc20_contract_address ? ($this->trc20?->symbol ?: 'TOKEN') : 'TRX'

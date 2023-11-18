@@ -63,22 +63,22 @@ class TronWallet extends Model
         return $this->hasMany($addressModel, 'wallet_id', 'id');
     }
 
-    public function plainPassword(): Attribute
+    protected function plainPassword(): Attribute
     {
         return new Attribute(get: fn () => $this->encrypted()->password());
     }
 
-    public function plainMnemonic(): Attribute
+    protected function plainMnemonic(): Attribute
     {
         return new Attribute(get: fn () => $this->encrypted()->mnemonic());
     }
 
-    public function plainSeed(): Attribute
+    protected function plainSeed(): Attribute
     {
         return new Attribute(get: fn () => $this->encrypted()->seed());
     }
 
-    public function trc20Balances(): Attribute
+    protected function trc20Balances(): Attribute
     {
         return new Attribute(
             get: fn () => TronTRC20::get()->map(fn (TronTRC20 $trc20) => [

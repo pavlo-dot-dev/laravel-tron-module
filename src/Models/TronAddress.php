@@ -51,7 +51,7 @@ class TronAddress extends Model
         return $this->belongsTo($walletModel, 'wallet_id', 'id');
     }
 
-    public function trc20Balances(): Attribute
+    protected function trc20Balances(): Attribute
     {
         return new Attribute(
             get: fn () => TronTRC20::get()->map(fn (TronTRC20 $trc20) => [
@@ -61,7 +61,7 @@ class TronAddress extends Model
         );
     }
 
-    public function watchOnly(): Attribute
+    protected function watchOnly(): Attribute
     {
         return new Attribute(
             get: fn () => is_null($this->private_key)
