@@ -4,6 +4,7 @@ namespace PavloDotDev\LaravelTronModule\Services;
 
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Date;
+use Illuminate\Support\Facades\Log;
 use PavloDotDev\LaravelTronModule\Api\DTO\TransferDTO;
 use PavloDotDev\LaravelTronModule\Api\DTO\TRC20TransferDTO;
 use PavloDotDev\LaravelTronModule\Enums\TronTransactionType;
@@ -62,16 +63,18 @@ class SyncAddressService
 
     protected function transactions(): self
     {
+        $minTimestamp = max(($this->address->sync_at?->getTimestamp() ?? 0) - 900, 0) * 1000;
+
         $transfers = Tron::api()
             ->getTransfers($this->address->address)
             ->limit(200)
             ->searchInterval(false)
-            ->minTimestamp(($this->address->sync_at?->getTimestamp() ?? 0) * 1000);
+            ->minTimestamp($minTimestamp);
 
         $trc20Transfers = Tron::api()
             ->getTRC20Transfers($this->address->address)
             ->limit(200)
-            ->minTimestamp(($this->address->sync_at?->getTimestamp() ?? 0) * 1000);
+            ->minTimestamp($minTimestamp);
 
         $this->address->update([
             'sync_at' => Date::now(),
@@ -81,20 +84,24 @@ class SyncAddressService
 
         foreach ($transfers as $transfer) {
             $transaction = $this->handleTransfer($transfer);
-            if( $transaction ) {
+            if ($transaction) {
                 $transactions[] = $transaction;
             }
         }
 
         foreach ($trc20Transfers as $trc20Transfer) {
             $transaction = $this->handlerTRC20Transfer($trc20Transfer);
-            if( $transaction ) {
+            if ($transaction) {
                 $transactions[] = $transaction;
             }
         }
 
-        foreach($transactions as $transaction) {
-            $this->webhook($transaction);
+        foreach ($transactions as $transaction) {
+            try {
+                $this->webhook($transaction);
+            } catch (\Exception $e) {
+                Log::error('Tron Transaction '.$transaction->txid.' webhook error: '.$e->getMessage());
+            }
         }
 
         return $this;
@@ -102,11 +109,14 @@ class SyncAddressService
 
     protected function handleTransfer(TransferDTO $transfer): TronTransaction
     {
+        $type = $transfer->to === $this->address->address ?
+            TronTransactionType::INCOMING : TronTransactionType::OUTGOING;
+
         return TronTransaction::updateOrCreate([
             'txid' => $transfer->txid,
             'address' => $this->address->address,
         ], [
-            'type' => $transfer->to === $this->address->address ? TronTransactionType::INCOMING : TronTransactionType::OUTGOING,
+            'type' => $type,
             'time_at' => $transfer->time,
             'from' => $transfer->from,
             'to' => $transfer->to,
@@ -121,11 +131,14 @@ class SyncAddressService
             return null;
         }
 
+        $type = $transfer->to === $this->address->address ?
+            TronTransactionType::INCOMING : TronTransactionType::OUTGOING;
+
         return TronTransaction::updateOrCreate([
             'txid' => $transfer->txid,
             'address' => $this->address->address,
         ], [
-            'type' => $transfer->to === $this->address->address ? TronTransactionType::INCOMING : TronTransactionType::OUTGOING,
+            'type' => $type,
             'time_at' => $transfer->time,
             'from' => $transfer->from,
             'to' => $transfer->to,
