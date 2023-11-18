@@ -83,6 +83,13 @@ echo $tronAddress->address; // Print Address
 echo $tronAddress->private_key; // Print private key
 ```
 
+Import watch-only address:
+```php
+$wallet = TronWallet::first();
+$address = Tron::importAddress($wallet, 'my tron address');
+$address->save();
+```
+
 Add TRC-20 token for tracking:
 ```php
 $contractAddress = 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t'; // Contract Address Tether USDT

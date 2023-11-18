@@ -10,9 +10,13 @@ trait Wallet
     /*
      * Create Tron Wallet (without saving in Database)
      */
-    public function createWallet(string $name, string $password, string|array $mnemonic, string $passphrase = null): TronWallet
-    {
-        if( !is_array($mnemonic) ) {
+    public function createWallet(
+        string $name,
+        string $password,
+        string|array $mnemonic,
+        string $passphrase = null
+    ): TronWallet {
+        if (!is_array($mnemonic)) {
             $mnemonic = explode(' ', $mnemonic);
         }
 

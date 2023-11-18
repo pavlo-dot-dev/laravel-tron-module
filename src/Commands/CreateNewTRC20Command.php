@@ -19,12 +19,11 @@ class CreateNewTRC20Command extends Command
             $error = false;
             $contractAddress = $this->ask('Contract Address');
 
-            if( !Tron::api()->validateAddress($contractAddress) ) {
+            if (!Tron::api()->validateAddress($contractAddress)) {
                 $error = true;
                 $this->error('Address is not valid.');
             }
-        }
-        while($error);
+        } while ($error);
 
         $trc20 = Tron::createTRC20($contractAddress);
         $trc20->save();

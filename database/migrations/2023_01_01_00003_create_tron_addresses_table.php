@@ -10,11 +10,13 @@ return new class extends Migration {
     {
         Schema::create('tron_addresses', function (Blueprint $table) {
             $table->id();
-            $table->foreignIdFor(TronWallet::class, 'wallet_id')->constrained('tron_wallets')->cascadeOnDelete();
+            $table->foreignIdFor(TronWallet::class, 'wallet_id')
+                ->constrained('tron_wallets')
+                ->cascadeOnDelete();
             $table->string('address');
             $table->string('title')->nullable();
-            $table->text('private_key');
-            $table->unsignedInteger('index');
+            $table->text('private_key')->nullable();
+            $table->unsignedInteger('index')->nullable();
             $table->timestamp('sync_at')->nullable();
             $table->boolean('activated')->nullable();
             $table->decimal('balance', 20, 6)->nullable();

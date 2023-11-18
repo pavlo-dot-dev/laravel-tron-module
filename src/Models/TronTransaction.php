@@ -71,7 +71,7 @@ class TronTransaction extends Model
     public function symbol(): Attribute
     {
         return new Attribute(
-            get: fn() => $this->trc20_contract_address ? ($this->trc20?->symbol ?: 'TOKEN') : 'TRX'
+            get: fn () => $this->trc20_contract_address ? ($this->trc20?->symbol ?: 'TOKEN') : 'TRX'
         );
     }
 }

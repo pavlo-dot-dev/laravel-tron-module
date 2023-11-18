@@ -27,7 +27,7 @@ class TronTRC20 extends Model
 
     public function contract(): TRC20Contract
     {
-        if( $this->contract === null ) {
+        if ($this->contract === null) {
             $this->contract = Tron::api()->getTRC20Contract($this->address);
         }
 

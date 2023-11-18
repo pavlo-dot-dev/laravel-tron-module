@@ -17,7 +17,7 @@ class GenerateAddressCommand extends Command
         $this->info('You are about to generate address for Tron Wallet');
 
         $wallets = TronWallet::get();
-        if( $wallets->count() === 0 ) {
+        if ($wallets->count() === 0) {
             $this->alert("The list of wallets is empty, first create a wallet.");
             return;
         }
@@ -30,12 +30,11 @@ class GenerateAddressCommand extends Command
         do {
             $error = false;
             $password = $this->ask('Please, enter password for wallet '.$walletName);
-            if( !$wallet->encrypted()->unlock($password) ) {
+            if (!$wallet->encrypted()->unlock($password)) {
                 $this->error('Password is wrong!');
                 $error = true;
             }
-        }
-        while($error);
+        } while ($error);
 
         $address = Tron::createAddress($wallet);
         $address->save();

@@ -14,8 +14,7 @@ class Tron
 
     public function __construct(
         protected readonly Api $api
-    )
-    {
+    ) {
     }
 
     /*

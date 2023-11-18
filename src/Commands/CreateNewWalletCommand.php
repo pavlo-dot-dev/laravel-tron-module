@@ -22,9 +22,11 @@ class CreateNewWalletCommand extends Command
             if (empty($name)) {
                 $error = true;
                 $this->error('Wallet name is required!');
-            } else if (TronWallet::whereName($name)->count() > 0) {
-                $error = true;
-                $this->error('Name is busy!');
+            } else {
+                if (TronWallet::whereName($name)->count() > 0) {
+                    $error = true;
+                    $this->error('Name is busy!');
+                }
             }
         } while ($error);
 
@@ -46,7 +48,7 @@ class CreateNewWalletCommand extends Command
             }
         } while ($error);
 
-        if( empty($mnemonic) ) {
+        if (empty($mnemonic)) {
             $mnemonic = implode(' ', Tron::mnemonicGenerate());
         }
 
