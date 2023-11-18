@@ -14,6 +14,7 @@ class TronAddress extends Model
         'wallet_id',
         'address',
         'title',
+        'watch_only',
         'private_key',
         'index',
         'sync_at',
@@ -25,8 +26,7 @@ class TronAddress extends Model
     ];
 
     protected $appends = [
-        'trc20_balances',
-        'watch_only',
+        'trc20_balances'
     ];
 
     protected $hidden = [
@@ -35,6 +35,7 @@ class TronAddress extends Model
     ];
 
     protected $casts = [
+        'watch_only' => 'boolean',
         'sync_at' => 'datetime',
         'activated' => 'boolean',
         'balance' => DecimalCast::class,
@@ -58,13 +59,6 @@ class TronAddress extends Model
                 ...$trc20->only(['address', 'name', 'symbol', 'decimals']),
                 'balance' => $this->trc20[$trc20->address] ?? null,
             ])
-        );
-    }
-
-    protected function watchOnly(): Attribute
-    {
-        return new Attribute(
-            get: fn () => is_null($this->private_key)
         );
     }
 }

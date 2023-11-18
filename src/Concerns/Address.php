@@ -52,6 +52,7 @@ trait Address
         return new $addressModel([
             'wallet_id' => $wallet->id,
             'address' => $address,
+            'watch_only' => true,
         ]);
     }
 }

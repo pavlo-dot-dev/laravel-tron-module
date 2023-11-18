@@ -15,6 +15,7 @@ return new class extends Migration {
                 ->cascadeOnDelete();
             $table->string('address');
             $table->string('title')->nullable();
+            $table->boolean('watch_only')->nullable();
             $table->text('private_key')->nullable();
             $table->unsignedInteger('index')->nullable();
             $table->timestamp('sync_at')->nullable();
