@@ -23,7 +23,7 @@ class SyncWalletJob implements ShouldQueue
 
     public function handle(SyncAddressService $service): void
     {
-        foreach( $this->wallet->addresses as $address ) {
+        foreach ($this->wallet->addresses as $address) {
             $service->run($address);
         }
 
@@ -32,7 +32,7 @@ class SyncWalletJob implements ShouldQueue
 
         foreach ($this->wallet->addresses()->get() as $address) {
             $balance = $balance->add((string)($address->balance ?: 0));
-            foreach( $address->trc20 as $k => $v ) {
+            foreach ($address->trc20 as $k => $v) {
                 $current = new Decimal($trc20[$k] ?? 0);
                 $trc20[$k] = $current->add($v)->toString();
             }

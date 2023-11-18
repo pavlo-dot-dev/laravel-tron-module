@@ -25,7 +25,8 @@ class TronAddress extends Model
     ];
 
     protected $appends = [
-        'trc20_balances'
+        'trc20_balances',
+        'watch_only',
     ];
 
     protected $hidden = [
@@ -60,4 +61,10 @@ class TronAddress extends Model
         );
     }
 
+    public function watchOnly(): Attribute
+    {
+        return new Attribute(
+            get: fn () => is_null($this->private_key)
+        );
+    }
 }
